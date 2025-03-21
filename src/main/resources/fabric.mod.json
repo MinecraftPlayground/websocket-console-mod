@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "websocket_console",
+  "version": "${version}",
+  "name": "WebSocket Console",
+  "description": "",
+  "authors": [],
+  "contact": {},
+  "license": "LGPL-3.0",
+  "icon": "assets/websocket_console/icon.png",
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+      "dev.loat.websocket_console.WebSocketConsole"
+    ]
+  },
+  "mixins": [
+    "websocket_console.mixins.json",
+    {
+      "config": "websocket_console.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
