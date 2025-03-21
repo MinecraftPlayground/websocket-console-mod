@@ -4,15 +4,19 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.text.Text;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.java_websocket.server.WebSocketServer;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.WebSocket;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.OutputStream;
-import java.io.PrintStream;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+
 import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.HashSet;
@@ -32,9 +36,12 @@ public class WebSocketConsole implements ModInitializer {
             webSocketServer.start();
             LOGGER.info("Starting WebSocket server on port 8080 ...");
 
-
-            System.setOut(new PrintStream(new ConsoleOutputStream(System.out), true));
-            System.setErr(new PrintStream(new ConsoleOutputStream(System.err), true));
+            var ctx = (LoggerContext)LogManager.getContext(false);
+            var logger = ctx.getConfiguration().getLoggers().get("");
+            var webSocketLogAppender = new WebSocketLogAppender();
+            webSocketLogAppender.start();
+            logger.addAppender(webSocketLogAppender, Level.DEBUG, null);
+            ctx.updateLoggers();
         });
 
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
@@ -50,12 +57,6 @@ public class WebSocketConsole implements ModInitializer {
     }
 
     public static void broadcastMessage(String message) {
-        if (serverInstance != null) {
-            serverInstance.execute(() -> {
-                Text text = Text.of(message);
-                serverInstance.getPlayerManager().broadcast(text, false);
-            });
-        }
         if (webSocketServer != null) {
             webSocketServer.broadcastToClients(message);
         }
@@ -96,7 +97,7 @@ public class WebSocketConsole implements ModInitializer {
 
         @Override
         public void onStart() {
-            LOGGER.info("WebSocket server started.");
+            // LOGGER.info("WebSocket server started.");
         }
 
         public void broadcastToClients(String message) {
@@ -108,27 +109,14 @@ public class WebSocketConsole implements ModInitializer {
         }
     }
 
-    private static class ConsoleOutputStream extends OutputStream {
-        private final PrintStream original;
-
-        public ConsoleOutputStream(PrintStream original) {
-            this.original = original;
+    private static class WebSocketLogAppender extends AbstractAppender {
+        protected WebSocketLogAppender() {
+            super("WebSocketLogAppender", null, PatternLayout.createDefaultLayout(), false);
         }
 
         @Override
-        public void write(int b) {
-            original.write(b);
-            if (b == '\n') {
-                return;
-            }
-            WebSocketConsole.broadcastMessage(String.valueOf((char) b));
-        }
-
-        @Override
-        public void write(byte @NotNull [] bytes, int off, int len) {
-            String message = new String(bytes, off, len);
-            original.write(bytes, off, len);
-            WebSocketConsole.broadcastMessage(message);
+        public void append(LogEvent event) {
+            WebSocketConsole.broadcastMessage(event.getMessage().getFormattedMessage());
         }
     }
 }
