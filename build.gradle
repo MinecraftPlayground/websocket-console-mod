@@ -14,7 +14,7 @@ loom {
     splitEnvironmentSourceSets()
 
     mods {
-        "websocket_console" {
+        "web_socket_console" {
             sourceSet sourceSets.main
             sourceSet sourceSets.client
         }
@@ -27,6 +27,8 @@ repositories {
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
+
+    maven { url 'https://maven.wispforest.io/releases/' }
 }
 
 dependencies {
@@ -38,6 +40,10 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
     implementation 'org.java-websocket:Java-WebSocket:1.5.3'
+
+    annotationProcessor modImplementation("io.wispforest:owo-lib:${project.owo_version}")
+
+    implementation 'org.json:json:20250107'
 }
 
 processResources {

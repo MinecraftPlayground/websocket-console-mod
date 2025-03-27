@@ -1,7 +1,7 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "dev.loat.websocket_console.mixin.client",
+  "package": "dev.loat.web_socket_console.mixin.client",
   "compatibilityLevel": "JAVA_21",
   "client": [
   ],
