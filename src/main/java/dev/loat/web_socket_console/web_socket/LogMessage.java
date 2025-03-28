@@ -40,7 +40,7 @@ public class LogMessage {
         data.put("className", this.className);
         data.put("simpleClassName", simpleClassName);
         data.put("message", this.message.getFormattedMessage());
-        data.put("error", this.stackStraceSource);
+        data.put("errors", this.stackStraceSource);
         return data.toString();
     }
 }
