@@ -6,7 +6,7 @@ on:
       - main
     
     paths: 
-      - './gradle.properties'
+      - 'gradle.properties'
   
   # workflow_dispatch:
   #   inputs:
