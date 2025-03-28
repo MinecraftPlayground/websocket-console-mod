@@ -4,9 +4,13 @@ on:
   workflow_dispatch:
   push:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    name: Build
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK
@@ -36,6 +40,7 @@ jobs:
   dependency-submission:
     if: ${{ github.ref_type == 'branch' && github.ref_name == 'main' }}
     runs-on: ubuntu-latest
+    name: Dependency Submission
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
