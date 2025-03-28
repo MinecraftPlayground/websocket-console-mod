@@ -1,0 +1,52 @@
+name: Build Mod .jar
+
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: 'Setup Gradle'
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          build-scan-publish: ${{ github.ref_type == 'branch' && github.ref_name == 'main' }}
+          build-scan-terms-of-use-agree: ${{ github.ref_type == 'branch' && github.ref_name == 'main' && 'yes' || '' }}
+          build-scan-terms-of-use-url: ${{ github.ref_type == 'branch' && github.ref_name == 'main' && 'https://gradle.com/terms-of-service' || '' }}
+
+      - name: 'Build with Gradle Wrapper'
+        run: |-
+          ./gradlew build --scan
+          ls -la build/libs/
+
+      - name: 'Save Artifact'
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'WebSocket Console'
+          path: ${{ github.workspace }}/build/libs
+
+  dependency-submission:
+    if: ${{ github.ref_type == 'branch' && github.ref_name == 'main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: 21
+
+      - name: Generate and submit dependency graph
+        uses: gradle/actions/dependency-submission@v4
+        with:
+          build-scan-publish: true
+          build-scan-terms-of-use-agree: "yes"
+          build-scan-terms-of-use-url: "https://gradle.com/terms-of-service"
