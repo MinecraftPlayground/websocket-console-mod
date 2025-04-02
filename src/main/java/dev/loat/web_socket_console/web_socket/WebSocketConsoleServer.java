@@ -1,6 +1,7 @@
 package dev.loat.web_socket_console.web_socket;
 
 import dev.loat.web_socket_console.logging.Logger;
+import dev.loat.web_socket_console.web_socket.receive.Parser;
 import net.minecraft.server.MinecraftServer;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
@@ -36,6 +37,7 @@ public class WebSocketConsoleServer extends WebSocketServer {
         WebSocket connection,
         ClientHandshake clientHandshake
     ) {
+
         connections.add(connection);
 
         Logger.info("New client connected: {}", connection.getRemoteSocketAddress());
@@ -62,12 +64,21 @@ public class WebSocketConsoleServer extends WebSocketServer {
         WebSocket connection,
         String message
     ) {
-        if (this.serverInstance != null) {
-            serverInstance.execute(() -> serverInstance.getCommandManager().executeWithPrefix(
-                serverInstance.getCommandSource(),
-                message
-            ));
-        }
+        Logger.info(message);
+
+        Parser.addListener("auth", (payload) -> {Logger.info(payload.toString());});
+        Parser.addListener("execute", (payload) -> {Logger.info(payload.toString());});
+        Parser.addListener("stats", (payload) -> {Logger.info(payload.toString());});
+
+        Parser.parse(message);
+
+
+//        if (this.serverInstance != null) {
+//            serverInstance.execute(() -> serverInstance.getCommandManager().executeWithPrefix(
+//                serverInstance.getCommandSource(),
+//                message
+//            ));
+//        }
     }
 
     @Override
