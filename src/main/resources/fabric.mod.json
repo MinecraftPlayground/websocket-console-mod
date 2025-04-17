@@ -15,7 +15,7 @@
     ]
   },
   "mixins": [
-    "websocket_console.mixins.json",
+    "web_socket_console.mixins.json",
     {
       "config": "web_socket_console.client.mixins.json",
       "environment": "client"

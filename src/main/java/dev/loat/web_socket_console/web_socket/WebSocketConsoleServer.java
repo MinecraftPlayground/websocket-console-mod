@@ -1,7 +1,7 @@
 package dev.loat.web_socket_console.web_socket;
 
 import dev.loat.web_socket_console.logging.Logger;
-import dev.loat.web_socket_console.web_socket.receive.Parser;
+import dev.loat.web_socket_console.web_socket.client.WebSocketClientList;
 import net.minecraft.server.MinecraftServer;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
@@ -11,11 +11,15 @@ import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 public class WebSocketConsoleServer extends WebSocketServer {
-    private final Set<WebSocket> connections = Collections.synchronizedSet(new HashSet<>());
+    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+    private final Set<WebSocket> clients = Collections.synchronizedSet(new HashSet<>());
     private final MinecraftServer serverInstance;
     private final int port;
+    private final String logLevel;
 
     /**
      * This class represents a WebSocket server for the minecraft server console.
@@ -25,11 +29,13 @@ public class WebSocketConsoleServer extends WebSocketServer {
      */
     public WebSocketConsoleServer(
         MinecraftServer minecraftServerInstance,
-        int port
+        int port,
+        String logLevel
     ) {
         super(new InetSocketAddress(port));
         this.serverInstance = minecraftServerInstance;
         this.port = port;
+        this.logLevel = logLevel;
     }
 
     @Override
@@ -37,10 +43,9 @@ public class WebSocketConsoleServer extends WebSocketServer {
         WebSocket connection,
         ClientHandshake clientHandshake
     ) {
+        this.clients.add(connection);
 
-        connections.add(connection);
-
-        Logger.info("New client connected: {}", connection.getRemoteSocketAddress());
+        Logger.info("Client connected: {}", connection.getRemoteSocketAddress());
     }
 
     @Override
@@ -50,10 +55,10 @@ public class WebSocketConsoleServer extends WebSocketServer {
         String reason,
         boolean remote
     ) {
-        connections.remove(connection);
+        clients.remove(connection);
 
         Logger.info(
-            "Existing client disconnected: {} with code {}",
+            "Client disconnected: {} with code {}",
             connection.getRemoteSocketAddress(),
             code
         );
@@ -64,21 +69,14 @@ public class WebSocketConsoleServer extends WebSocketServer {
         WebSocket connection,
         String message
     ) {
-        Logger.info(message);
+//        Logger.info(message);
 
-        Parser.addListener("auth", (payload) -> {Logger.info(payload.toString());});
-        Parser.addListener("execute", (payload) -> {Logger.info(payload.toString());});
-        Parser.addListener("stats", (payload) -> {Logger.info(payload.toString());});
-
-        Parser.parse(message);
-
-
-//        if (this.serverInstance != null) {
-//            serverInstance.execute(() -> serverInstance.getCommandManager().executeWithPrefix(
-//                serverInstance.getCommandSource(),
-//                message
-//            ));
-//        }
+        if (this.serverInstance != null) {
+            serverInstance.execute(() -> serverInstance.getCommandManager().executeWithPrefix(
+                serverInstance.getCommandSource(),
+                message
+            ));
+        }
     }
 
     @Override
@@ -91,12 +89,12 @@ public class WebSocketConsoleServer extends WebSocketServer {
 
     @Override
     public void onStart() {
-        Logger.info("Started WebSocket server on *:{}", this.port);
+        Logger.info("Started WebSocket server on *:{} with log level {}", this.port, this.logLevel);
     }
 
     public void broadcastToClients(LogMessage message) {
-        synchronized (this.connections) {
-            for (WebSocket connection : this.connections) {
+        synchronized (this.clients) {
+            for (WebSocket connection : this.clients) {
                 connection.send(message.toFormattedString());
             }
         }

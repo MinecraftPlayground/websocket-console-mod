@@ -39,11 +39,9 @@ dependencies {
 
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-    implementation 'org.java-websocket:Java-WebSocket:1.5.3'
-
-    annotationProcessor modImplementation("io.wispforest:owo-lib:${project.owo_version}")
-
-    implementation 'org.json:json:20250107'
+    implementation(include('org.java-websocket:Java-WebSocket:1.6.0'))
+    implementation(include('org.json:json:20250107'))
+    implementation(include("org.yaml:snakeyaml:2.2"))
 }
 
 processResources {
@@ -54,8 +52,8 @@ processResources {
 
     filesMatching("fabric.mod.json") {
         expand "version": project.version,
-                "minecraft_version": project.minecraft_version,
-                "loader_version": project.loader_version
+        "minecraft_version": project.minecraft_version,
+        "loader_version": project.loader_version
     }
 }
 
