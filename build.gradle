@@ -41,7 +41,7 @@ dependencies {
 
     implementation(include('org.java-websocket:Java-WebSocket:1.6.0'))
     implementation(include('org.json:json:20250107'))
-    implementation(include("org.yaml:snakeyaml:2.2"))
+    implementation(include('org.yaml:snakeyaml:2.2'))
 }
 
 processResources {

@@ -1,4 +1,4 @@
-package dev.loat.web_socket_console.web_socket;
+package dev.loat.web_socket_console.web_socket.send;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.ThreadContext;

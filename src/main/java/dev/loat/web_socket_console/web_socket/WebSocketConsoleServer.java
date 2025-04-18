@@ -1,21 +1,19 @@
 package dev.loat.web_socket_console.web_socket;
 
+import dev.loat.web_socket_console.http.URLParameters;
 import dev.loat.web_socket_console.logging.Logger;
-import dev.loat.web_socket_console.web_socket.client.WebSocketClientList;
+import dev.loat.web_socket_console.web_socket.send.LogMessage;
 import net.minecraft.server.MinecraftServer;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 
 import java.net.InetSocketAddress;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.*;
 
 public class WebSocketConsoleServer extends WebSocketServer {
-    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
     private final Set<WebSocket> clients = Collections.synchronizedSet(new HashSet<>());
     private final MinecraftServer serverInstance;
     private final int port;
@@ -44,6 +42,35 @@ public class WebSocketConsoleServer extends WebSocketServer {
         ClientHandshake clientHandshake
     ) {
         this.clients.add(connection);
+        Map<String, List<String>> parameters;
+
+        Logger.info("http://localhost" + clientHandshake.getResourceDescriptor());
+        try {
+            var uri = new URI("http://localhost" + clientHandshake.getResourceDescriptor());
+            uri.getPath();
+            parameters = new URLParameters(uri).getParameters();
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+
+//        try {
+//            new URI(connection.getRemoteSocketAddress().getHostString() + connection.getResourceDescriptor()).toURL().getQuery();
+//        } catch (URISyntaxException e) {
+//            throw new RuntimeException(e);
+//        }
+
+
+        /*
+        localhost:8080/log?channel=debug -> DEBUG Channel
+        localhost:8080/log?channel=info -> INFO Channel
+        localhost:8080/log?channel=warn -> WARN Channel
+        localhost:8080/log?channel=error -> ERROR Channel
+
+        localhost:8080/log -> localhost:8080/log?channel=debug&channel=info&channel=warn&channel=error -> All Channel
+
+        localhost:8080/log?channel=warn&channel=error -> WARN, ERROR Channel
+
+        */
 
         Logger.info("Client connected: {}", connection.getRemoteSocketAddress());
     }
@@ -69,7 +96,7 @@ public class WebSocketConsoleServer extends WebSocketServer {
         WebSocket connection,
         String message
     ) {
-//        Logger.info(message);
+        Logger.debug(message);
 
         if (this.serverInstance != null) {
             serverInstance.execute(() -> serverInstance.getCommandManager().executeWithPrefix(

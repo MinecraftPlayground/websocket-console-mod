@@ -8,12 +8,13 @@ import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.nodes.Tag;
 import org.yaml.snakeyaml.representer.Representer;
 
-import java.io.FileWriter;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +34,12 @@ public class YamlSerializer<ConfigClass> {
      * @throws Exception If an error occurs while writing the file.
      */
     public void serialize(ConfigClass config) throws Exception {
+        Path path = Paths.get(filePath);
+        if (!Files.exists(path)) {
+            Files.createDirectories(path.getParent());
+            Files.createFile(path);
+        }
+
         DumperOptions options = new DumperOptions();
         options.setIndent(2);
         options.setPrettyFlow(true);
@@ -43,49 +50,43 @@ public class YamlSerializer<ConfigClass> {
 
         Yaml yaml = new Yaml(representer, options);
 
-        String tempFile = filePath + ".tmp";
-        try (FileWriter writer = new FileWriter(tempFile)) {
-            yaml.dump(config, writer);
-        }
+        String yamlString = yaml.dump(config);
+        String[] lines = yamlString.split("\n");
 
-        Map<String, Object> yamlData;
-        try (InputStream inputStream = Files.newInputStream(Paths.get(tempFile))) {
-            yamlData = new Yaml().load(inputStream);
-        }
-
-        List<String> modifiedLines = new ArrayList<>();
+        // Kommentare für Felder mit @Comment-Annotation sammeln
         Field[] fields = configClass.getDeclaredFields();
-
+        Map<String, List<String>> commentsMap = new HashMap<>();
         for (Field field : fields) {
             Comment comment = field.getAnnotation(Comment.class);
-            String fieldName = field.getName();
-
             if (comment != null) {
                 String[] commentLines = comment.value().split("\n");
+                List<String> formattedComments = new ArrayList<>();
                 for (String commentLine : commentLines) {
-                    String trimmedLine = commentLine.trim();
-                    if (!trimmedLine.isEmpty()) {
-                        modifiedLines.add("# " + trimmedLine);
+                    String trimmed = commentLine.trim();
+                    if (!trimmed.isEmpty()) {
+                        formattedComments.add("# " + trimmed);
                     } else {
-                        modifiedLines.add("#");
+                        formattedComments.add("#");
                     }
                 }
-            }
-
-            if (yamlData != null && yamlData.containsKey(fieldName)) {
-                Object value = yamlData.get(fieldName);
-                String yamlValue = yaml.dump(value).trim();
-                if (yamlValue.contains("\n")) {
-                    yamlValue = yamlValue.substring(0, yamlValue.indexOf('\n'));
-                }
-                modifiedLines.add(fieldName + ": " + yamlValue);
-            } else {
-                modifiedLines.add(fieldName + ": null");
+                commentsMap.put(field.getName(), formattedComments);
             }
         }
 
-        Files.write(Paths.get(filePath), modifiedLines);
-        Files.deleteIfExists(Paths.get(tempFile));
+        // YAML-Zeilen mit Kommentaren anreichern
+        List<String> modifiedLines = new ArrayList<>();
+        for (String line : lines) {
+            for (String fieldName : commentsMap.keySet()) {
+                if (line.startsWith(fieldName + ":")) {
+                    modifiedLines.addAll(commentsMap.get(fieldName));
+                    break;
+                }
+            }
+            modifiedLines.add(line);
+        }
+
+        // Ergebnis in die Zieldatei schreiben
+        Files.write(path, modifiedLines);
     }
 
     /**
@@ -95,7 +96,15 @@ public class YamlSerializer<ConfigClass> {
      * @throws Exception If an error occurs while reading the file or casting.
      */
     public ConfigClass parse() throws Exception {
-        try (InputStream inputStream = Files.newInputStream(Paths.get(filePath))) {
+        Path path = Paths.get(filePath);
+        if (!Files.exists(path)) {
+            // Erstelle die Ordnerstruktur und Datei, falls sie nicht existieren
+            Files.createDirectories(path.getParent());
+            Files.createFile(path);
+            throw new IllegalStateException("YAML file was newly created and is empty: " + filePath);
+        }
+
+        try (InputStream inputStream = Files.newInputStream(path)) {
             LoaderOptions loaderOptions = new LoaderOptions();
             loaderOptions.setAllowDuplicateKeys(false);
             Constructor constructor = new Constructor(configClass, loaderOptions);

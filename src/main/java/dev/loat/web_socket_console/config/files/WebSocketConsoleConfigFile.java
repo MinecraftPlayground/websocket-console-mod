@@ -21,5 +21,5 @@ public class WebSocketConsoleConfigFile {
     - "WARN"
     - "ERROR"
     """)
-    public String logLevel = LogLevel.DEBUG;
+    public String logLevel = LogLevel.INFO;
 }

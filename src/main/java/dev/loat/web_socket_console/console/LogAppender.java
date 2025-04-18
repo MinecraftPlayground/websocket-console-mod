@@ -1,6 +1,6 @@
 package dev.loat.web_socket_console.console;
 
-import dev.loat.web_socket_console.web_socket.LogMessage;
+import dev.loat.web_socket_console.web_socket.send.LogMessage;
 import dev.loat.web_socket_console.web_socket.WebSocketConsoleServer;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
