@@ -11,7 +11,7 @@
   "environment": "server",
   "entrypoints": {
     "main": [
-      "dev.loat.web_socket_console.WebSocketConsole"
+      "dev.loat.web_socket_console.WebSocketConsoleMod"
     ]
   },
   "mixins": [

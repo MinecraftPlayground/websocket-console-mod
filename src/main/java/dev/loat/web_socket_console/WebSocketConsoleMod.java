@@ -16,7 +16,7 @@ import org.apache.logging.log4j.LogManager;
 
 import java.io.File;
 
-public class WebSocketConsole implements ModInitializer {
+public class WebSocketConsoleMod implements ModInitializer {
     private static WebSocketConsoleServer webSocketConsoleServer;
     private static MinecraftServer serverInstance;
 
@@ -24,7 +24,7 @@ public class WebSocketConsole implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        Logger.setLoggerClass(WebSocketConsole.class);
+        Logger.setLoggerClass(WebSocketConsoleMod.class);
 
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             var path = FabricLoader.getInstance().getConfigDir().resolve("web_socket_console/config.yaml");
@@ -42,27 +42,27 @@ public class WebSocketConsole implements ModInitializer {
             }
 
             try {
-                WebSocketConsole.modConfig = config.parse();
+                WebSocketConsoleMod.modConfig = config.parse();
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
 
-            WebSocketConsole.serverInstance = server;
-            WebSocketConsole.webSocketConsoleServer = new WebSocketConsoleServer(
-                WebSocketConsole.serverInstance,
-                WebSocketConsole.modConfig.port,
-                WebSocketConsole.modConfig.logLevel
+            WebSocketConsoleMod.serverInstance = server;
+            WebSocketConsoleMod.webSocketConsoleServer = new WebSocketConsoleServer(
+                WebSocketConsoleMod.serverInstance,
+                WebSocketConsoleMod.modConfig.port,
+                WebSocketConsoleMod.modConfig.logLevel
             );
             Logger.info("Starting WebSocket server");
-            WebSocketConsole.webSocketConsoleServer.start();
+            WebSocketConsoleMod.webSocketConsoleServer.start();
 
             var ctx = (LoggerContext)LogManager.getContext(false);
             var logger = ctx.getConfiguration().getLoggers().get("");
-            var webSocketLogAppender = new LogAppender(WebSocketConsole.webSocketConsoleServer);
+            var webSocketLogAppender = new LogAppender(WebSocketConsoleMod.webSocketConsoleServer);
             webSocketLogAppender.start();
             logger.addAppender(
                 webSocketLogAppender,
-                Level.valueOf(WebSocketConsole.modConfig.logLevel),
+                Level.valueOf(WebSocketConsoleMod.modConfig.logLevel),
                 null
             );
             ctx.updateLoggers();
@@ -70,11 +70,7 @@ public class WebSocketConsole implements ModInitializer {
 
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
             if (webSocketConsoleServer != null) {
-                try {
-                    webSocketConsoleServer.stop();
-                } catch (InterruptedException error) {
-                    throw new RuntimeException(error);
-                }
+                webSocketConsoleServer.stop();
 
                 Logger.info("Stopping WebSocket server");
             }

@@ -1,20 +1,20 @@
 package dev.loat.web_socket_console.web_socket;
 
-import dev.loat.web_socket_console.http.URLParameters;
 import dev.loat.web_socket_console.logging.Logger;
 import dev.loat.web_socket_console.web_socket.send.LogMessage;
+import io.javalin.plugin.bundled.CorsPluginConfig;
+import io.javalin.websocket.WsConnectContext;
 import net.minecraft.server.MinecraftServer;
-import org.java_websocket.WebSocket;
-import org.java_websocket.handshake.ClientHandshake;
-import org.java_websocket.server.WebSocketServer;
+import io.javalin.Javalin;
+import org.json.JSONObject;
 
-import java.net.InetSocketAddress;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
-public class WebSocketConsoleServer extends WebSocketServer {
-    private final Set<WebSocket> clients = Collections.synchronizedSet(new HashSet<>());
+public class WebSocketConsoleServer {
+    private final Set<WsConnectContext> clients = Collections.synchronizedSet(new HashSet<>());
+    private final Javalin app;
     private final MinecraftServer serverInstance;
     private final int port;
     private final String logLevel;
@@ -30,99 +30,95 @@ public class WebSocketConsoleServer extends WebSocketServer {
         int port,
         String logLevel
     ) {
-        super(new InetSocketAddress(port));
-        this.serverInstance = minecraftServerInstance;
-        this.port = port;
-        this.logLevel = logLevel;
-    }
-
-    @Override
-    public void onOpen(
-        WebSocket connection,
-        ClientHandshake clientHandshake
-    ) {
-        this.clients.add(connection);
-        Map<String, List<String>> parameters;
-
-        Logger.info("http://localhost" + clientHandshake.getResourceDescriptor());
-        try {
-            var uri = new URI("http://localhost" + clientHandshake.getResourceDescriptor());
-            uri.getPath();
-            parameters = new URLParameters(uri).getParameters();
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
-        }
-
-//        try {
-//            new URI(connection.getRemoteSocketAddress().getHostString() + connection.getResourceDescriptor()).toURL().getQuery();
-//        } catch (URISyntaxException e) {
-//            throw new RuntimeException(e);
-//        }
-
-
         /*
-        localhost:8080/log?channel=debug -> DEBUG Channel
-        localhost:8080/log?channel=info -> INFO Channel
-        localhost:8080/log?channel=warn -> WARN Channel
-        localhost:8080/log?channel=error -> ERROR Channel
+        localhost:8080/log?logLevel=debug -> DEBUG Channel
+        localhost:8080/log?logLevel=info -> INFO Channel
+        localhost:8080/log?logLevel=warn -> WARN Channel
+        localhost:8080/log?logLevel=error -> ERROR Channel
 
-        localhost:8080/log -> localhost:8080/log?channel=debug&channel=info&channel=warn&channel=error -> All Channel
+        localhost:8080/log -> localhost:8080/log?logLevel=debug&logLevel=info&logLevel=warn&logLevel=error -> All Channel
 
         localhost:8080/log?channel=warn&channel=error -> WARN, ERROR Channel
 
         */
+        this.serverInstance = minecraftServerInstance;
+        this.port = port;
+        this.logLevel = logLevel;
+        this.app = Javalin.create(config -> {
+            config.showJavalinBanner = false;
+            config.jetty.defaultPort = this.port;
+            config.bundledPlugins.enableCors(cors -> {
+                cors.addRule(CorsPluginConfig.CorsRule::anyHost);
+            });
+        });
 
-        Logger.info("Client connected: {}", connection.getRemoteSocketAddress());
+
+        this.app.ws("/logs", ws -> {
+            ws.onConnect(openEvent -> {
+                clients.add(openEvent);
+
+                openEvent.enableAutomaticPings();
+
+                Logger.info(
+                    "Client connected: {}",
+                    openEvent.host()
+                );
+            });
+
+            ws.onClose(closeEvent -> {
+                clients.removeIf((client) -> client.session == closeEvent.session);
+
+                Logger.info(
+                    "Client disconnected: {} with code {} {}",
+                    closeEvent.host(),
+                    closeEvent.status(),
+                    closeEvent.reason()
+                );
+            });
+
+            ws.onError(errorEvent -> {
+                if (errorEvent.error() != null) {
+                    Logger.error(errorEvent.error().getMessage());
+                }
+                clients.removeIf(client -> client.session == errorEvent.session);
+            });
+        });
+
+        this.app.post("/command", event -> {
+            String body = event.body();
+            if (body.trim().isEmpty()) {
+                event.status(400).result("Missing command in body");
+                return;
+            }
+
+            var message = new JSONObject(body);
+
+            if (this.serverInstance != null) {
+                Logger.info(message.toString());
+//                serverInstance.execute(() -> serverInstance.getCommandManager().executeWithPrefix(
+//                    serverInstance.getCommandSource(),
+//                    message
+//                ));
+            }
+
+            event.status(200).result("Done!");
+        });
+
+        Logger.info("Started server on *:{} with log level {}", this.port, this.logLevel);
     }
 
-    @Override
-    public void onClose(
-        WebSocket connection,
-        int code,
-        String reason,
-        boolean remote
-    ) {
-        clients.remove(connection);
-
-        Logger.info(
-            "Client disconnected: {} with code {}",
-            connection.getRemoteSocketAddress(),
-            code
-        );
+    public void start() {
+        this.app.start();
     }
 
-    @Override
-    public void onMessage(
-        WebSocket connection,
-        String message
-    ) {
-        Logger.debug(message);
-
-        if (this.serverInstance != null) {
-            serverInstance.execute(() -> serverInstance.getCommandManager().executeWithPrefix(
-                serverInstance.getCommandSource(),
-                message
-            ));
-        }
-    }
-
-    @Override
-    public void onError(
-        WebSocket webSocket,
-        Exception exception
-    ) {
-        Logger.error(exception.toString());
-    }
-
-    @Override
-    public void onStart() {
-        Logger.info("Started WebSocket server on *:{} with log level {}", this.port, this.logLevel);
+    public void stop() {
+        this.app.stop();
     }
 
     public void broadcastToClients(LogMessage message) {
         synchronized (this.clients) {
-            for (WebSocket connection : this.clients) {
-                connection.send(message.toFormattedString());
+            for (WsConnectContext client : this.clients) {
+                client.send(message.toFormattedString());
             }
         }
     }

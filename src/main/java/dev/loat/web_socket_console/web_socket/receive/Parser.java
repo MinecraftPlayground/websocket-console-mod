@@ -1,64 +1,44 @@
 package dev.loat.web_socket_console.web_socket.receive;
 
-import dev.loat.web_socket_console.logging.Logger;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.json.JSONString;
+import org.java_websocket.WebSocket;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
-import java.util.function.Consumer;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 public class Parser {
-    private static final Map<String, List<Consumer<JSONObject>>> listeners = new HashMap<>();
-
-    /**
-     * This function parses the message.
-     *
-     * @param message The message to parse
-     */
-    public static void parse(String message) {
-        JSONObject messageObject;
-        String type;
-        JSONObject payload;
-
-        try {
-            messageObject = new JSONObject(message);
-        } catch (JSONException error) {
-            Logger.error("Failed to parse message: {}", error.getMessage());
-            return;
-        }
-
-        try {
-            type = messageObject.getString("type");
-        } catch (JSONException error) {
-            Logger.error("Failed to parse type: {}", error.getMessage());
-            return;
-        }
-
-        try {
-            payload = messageObject.getJSONObject("payload");
-        } catch (JSONException error) {
-            Logger.error("Failed to parse payload: {}", error.getMessage());
-            return;
-        }
-
-        Parser.listeners.getOrDefault(type, new ArrayList<>()).forEach((callback) -> {
-            callback.accept(payload);
-        });
+    @FunctionalInterface
+    public interface Action {
+        void execute(
+            String path,
+            WebSocket connection,
+            Map<String, Set<String>> parameters
+        );
     }
 
-    /**
-     * This function allows to add listeners to specific message types.
-     *
-     * @param type The type of the message
-     * @param callback The function to call when receiving the message
-     */
-    public static void addListener(
-        String type,
-        Consumer<JSONObject> callback
-    ) {
-        var callbacks = Parser.listeners.computeIfAbsent(type, (empty) -> new ArrayList<>());
+    private static final Map<Pattern, Action> actions = new HashMap<>();
 
-        callbacks.add(callback);
+    public static void add(
+        @NotNull String path,
+        Action action
+    ) {
+        Parser.actions.put(Pattern.compile(path), action);
+    }
+
+    public static void remove(
+        String path
+    ) {
+        Parser.actions.remove(Pattern.compile(path));
+    }
+
+    public static void parse(
+        String path,
+        WebSocket connection,
+        Map<String, List<String>> parameters
+    ) {
+
     }
 }

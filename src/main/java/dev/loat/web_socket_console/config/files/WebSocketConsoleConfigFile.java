@@ -1,13 +1,7 @@
 package dev.loat.web_socket_console.config.files;
 
 import dev.loat.web_socket_console.config.parser.annotation.Comment;
-
-class LogLevel {
-    public static String DEBUG = "DEBUG";
-    public static String INFO = "INFO";
-    public static String WARN = "WARN";
-    public static String ERROR = "ERROR";
-}
+import dev.loat.web_socket_console.console.Level;
 
 public class WebSocketConsoleConfigFile {
     @Comment("The Port to use for the WebSocket server.")
@@ -21,5 +15,5 @@ public class WebSocketConsoleConfigFile {
     - "WARN"
     - "ERROR"
     """)
-    public String logLevel = LogLevel.INFO;
+    public String logLevel = Level.INFO;
 }
